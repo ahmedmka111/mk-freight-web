@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MK Freight AI — Autonomous Freight Dispatch Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #050508;
+  --white: #f5f4f0;
+  --orange: #ff5c1a;
+  --orange-dim: #cc4a14;
+  --steel: #1a1a2e;
+  --muted: #8a8a9a;
+  --card: #0e0e18;
+  --border: rgba(255,92,26,0.15);
+  --glow: rgba(255,92,26,0.08);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* Custom cursor */
+.cursor {
+  width: 10px; height: 10px;
+  background: var(--orange);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.1s ease;
+  mix-blend-mode: difference;
+}
+.cursor-ring {
+  width: 36px; height: 36px;
+  border: 1px solid var(--orange);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+  transition: all 0.15s ease;
+  opacity: 0.5;
+}
+
+/* Noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9990;
+  opacity: 0.4;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 20px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  background: rgba(5,5,8,0.8);
+}
+
+.nav-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+.nav-logo span { color: var(--orange); }
+
+.nav-links {
+  display: flex;
+  gap: 36px;
+  list-style: none;
+}
+.nav-links a {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--white); }
+
+.nav-cta {
+  background: var(--orange);
+  color: var(--black) !important;
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  border-radius: 2px;
+  transition: background 0.2s !important;
+}
+.nav-cta:hover { background: var(--orange-dim) !important; color: var(--black) !important; }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 120px 48px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,92,26,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,92,26,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+}
+
+.hero-glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(255,92,26,0.12) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,92,26,0.08);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 100px;
+  margin-bottom: 32px;
+  width: fit-content;
+}
+.hero-badge-dot {
+  width: 6px; height: 6px;
+  background: var(--orange);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+.hero-badge span {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(52px, 8vw, 96px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  margin-bottom: 32px;
+  max-width: 900px;
+}
+
+.hero-title .line-orange { color: var(--orange); }
+.hero-title .line-outline {
+  -webkit-text-stroke: 1px rgba(245,244,240,0.3);
+  color: transparent;
+}
+
+.hero-desc {
+  font-size: 17px;
+  line-height: 1.7;
+  color: rgba(245,244,240,0.55);
+  max-width: 500px;
+  margin-bottom: 48px;
+  font-weight: 300;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  background: var(--orange);
+  color: var(--black);
+  padding: 14px 32px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: all 0.2s;
+  border: none;
+  cursor: none;
+}
+.btn-primary:hover {
+  background: var(--white);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  color: var(--muted);
+  padding: 14px 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s;
+  cursor: none;
+}
+.btn-ghost:hover { color: var(--white); }
+.btn-ghost::after {
+  content: '→';
+  transition: transform 0.2s;
+}
+.btn-ghost:hover::after { transform: translateX(4px); }
+
+/* STATS BAR */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin: 80px 0 0;
+}
+
+.stat-item {
+  background: var(--black);
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.3s;
+}
+.stat-item:hover { background: var(--glow); }
+
+.stat-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--orange);
+}
+.stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* SECTION */
+section {
+  padding: 120px 48px;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-label::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--orange);
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 20px;
+}
+
+.section-sub {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 500px;
+  font-weight: 300;
+}
+
+/* HOW IT WORKS */
+.flow-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  margin-top: 80px;
+}
+
+.flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.flow-step {
+  display: flex;
+  gap: 24px;
+  padding: 28px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+  cursor: none;
+}
+.flow-step:last-child { border-bottom: none; }
+
+.step-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  opacity: 0.6;
+  padding-top: 4px;
+  min-width: 28px;
+  letter-spacing: 0.08em;
+}
+
+.step-content h4 {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.step-content p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* TERMINAL */
+.terminal {
+  background: var(--card);
+  border: 1px solid rgba(255,92,26,0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: 'DM Mono', monospace;
+}
+
+.terminal-header {
+  background: rgba(255,255,255,0.03);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.t-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.t-dot:nth-child(1) { background: #ff5f57; }
+.t-dot:nth-child(2) { background: #ffbd2e; }
+.t-dot:nth-child(3) { background: #28ca41; }
+.terminal-title {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 8px;
+  letter-spacing: 0.06em;
+}
+
+.terminal-body {
+  padding: 24px;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.t-line { display: flex; gap: 12px; }
+.t-prompt { color: var(--orange); opacity: 0.7; }
+.t-text { color: rgba(245,244,240,0.7); }
+.t-green { color: #28ca41; }
+.t-blue { color: #5ac8fa; }
+.t-yellow { color: #ffbd2e; }
+.t-comment { color: rgba(255,255,255,0.25); }
+.t-cursor {
+  display: inline-block;
+  width: 8px; height: 14px;
+  background: var(--orange);
+  animation: blink 1.2s step-end infinite;
+  vertical-align: middle;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* AGENTS GRID */
+.agents-section { background: var(--card); }
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1px;
+  background: rgba(255,255,255,0.05);
+  margin-top: 60px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.agent-card {
+  background: var(--black);
+  padding: 32px;
+  transition: background 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.agent-card:hover { background: rgba(255,92,26,0.04); }
+.agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--orange);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+.agent-card:hover::before { transform: scaleX(1); }
+
+.agent-id {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--orange);
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+.agent-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.agent-role {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  font-weight: 300;
+}
+.agent-star {
+  position: absolute;
+  top: 24px; right: 24px;
+  color: var(--orange);
+  font-size: 14px;
+}
+
+/* FEATURES */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: rgba(255,255,255,0.04);
+  margin-top: 60px;
+}
+
+.feature-card {
+  background: var(--black);
+  padding: 48px 40px;
+  transition: background 0.3s;
+}
+.feature-card:hover { background: var(--glow); }
+
+.feature-icon {
+  width: 44px; height: 44px;
+  background: rgba(255,92,26,0.1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+
+.feature-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+.feature-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+/* TECH STACK */
+.tech-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 40px;
+}
+.tech-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 6px 14px;
+  letter-spacing: 0.08em;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+.tech-tag:hover {
+  color: var(--orange);
+  border-color: var(--border);
+}
+
+/* PROBLEM/SOLUTION */
+.ps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  background: rgba(255,255,255,0.04);
+  margin-top: 60px;
+}
+.ps-card {
+  background: var(--black);
+  padding: 56px 48px;
+}
+.ps-card.solution { background: rgba(255,92,26,0.04); }
+.ps-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  padding: 4px 10px;
+  display: inline-block;
+  border-radius: 2px;
+}
+.ps-label.problem {
+  color: #ff5f57;
+  background: rgba(255,95,87,0.08);
+  border: 1px solid rgba(255,95,87,0.2);
+}
+.ps-label.solution {
+  color: #28ca41;
+  background: rgba(40,202,65,0.08);
+  border: 1px solid rgba(40,202,65,0.2);
+}
+.ps-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ps-list li {
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(245,244,240,0.75);
+  padding-left: 20px;
+  position: relative;
+  font-weight: 300;
+}
+.ps-list li::before {
+  position: absolute;
+  left: 0;
+  font-size: 12px;
+}
+.problem-list li::before { content: '×'; color: #ff5f57; }
+.solution-list li::before { content: '✓'; color: #28ca41; }
+
+/* CTA SECTION */
+.cta-section {
+  background: var(--orange);
+  padding: 100px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: 'MK';
+  position: absolute;
+  right: -40px; bottom: -80px;
+  font-family: 'Syne', sans-serif;
+  font-size: 300px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.08);
+  line-height: 1;
+  pointer-events: none;
+}
+.cta-section .section-label { color: rgba(0,0,0,0.5); }
+.cta-section .section-label::before { background: rgba(0,0,0,0.3); }
+.cta-section .section-title { color: var(--black); }
+.cta-section .section-sub { color: rgba(0,0,0,0.6); max-width: 480px; }
+
+.cta-btns {
+  display: flex;
+  gap: 16px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+.btn-dark {
+  background: var(--black);
+  color: var(--white);
+  padding: 14px 32px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+.btn-dark:hover {
+  background: rgba(0,0,0,0.8);
+  transform: translateY(-1px);
+}
+.btn-outline-dark {
+  border: 2px solid rgba(0,0,0,0.3);
+  color: var(--black);
+  padding: 14px 32px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+.btn-outline-dark:hover {
+  border-color: var(--black);
+  background: rgba(0,0,0,0.08);
+}
+
+/* FOOTER */
+footer {
+  padding: 48px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+.footer-logo span { color: var(--orange); }
+
+.footer-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+.footer-links a {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--white); }
+
+.footer-copy {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.06em;
+}
+
+/* SCROLL ANIMATIONS */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* AZURE BANNER */
+.azure-banner {
+  background: linear-gradient(135deg, rgba(0,120,212,0.08), rgba(0,120,212,0.03));
+  border: 1px solid rgba(0,120,212,0.2);
+  border-radius: 8px;
+  padding: 32px 36px;
+  margin-top: 48px;
+  margin-bottom: 8px;
+}
+.azure-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.azure-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.azure-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+.azure-services {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.azure-service {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 32px 0 0;
+  flex: 1;
+  min-width: 200px;
+}
+.azure-service:first-child { padding-left: 0; }
+.azure-service-icon {
+  font-size: 22px;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,120,212,0.1);
+  border-radius: 6px;
+}
+.azure-service-name {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5ac8fa;
+  margin-bottom: 2px;
+}
+.azure-service-desc {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.azure-divider {
+  width: 1px;
+  background: rgba(0,120,212,0.2);
+  margin: 0 32px 0 0;
+  align-self: stretch;
+  min-height: 40px;
+}
+.azure-tag {
+  color: #5ac8fa !important;
+  border-color: rgba(0,120,212,0.3) !important;
+}
+.azure-tag:hover {
+  color: #5ac8fa !important;
+  border-color: rgba(0,120,212,0.6) !important;
+  background: rgba(0,120,212,0.06);
+}
+
+/* RESPONSIVE — MOBILE FIRST */
+@media (max-width: 900px) {
+  nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+
+  .hero { padding: 90px 20px 40px; }
+  .hero-title { font-size: clamp(40px, 11vw, 72px); }
+  .hero-desc { font-size: 15px; }
+  .hero-actions { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .btn-primary { width: 100%; text-align: center; }
+
+  section { padding: 64px 20px; }
+
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .stat-item { padding: 20px; }
+  .stat-number { font-size: 32px; }
+
+  .flow-container { grid-template-columns: 1fr; gap: 40px; }
+
+  .features-grid { grid-template-columns: 1fr; gap: 2px; }
+  .feature-card { padding: 32px 24px; }
+
+  .ps-grid { grid-template-columns: 1fr; gap: 2px; }
+  .ps-card { padding: 36px 24px; }
+
+  .agents-grid { grid-template-columns: 1fr 1fr; }
+  .agent-card { padding: 20px; }
+
+  .cta-section { padding: 64px 20px; }
+  .cta-btns { flex-direction: column; }
+  .btn-dark, .btn-outline-dark { text-align: center; padding: 14px 20px; font-size: 12px; word-break: break-all; }
+
+  footer { padding: 32px 20px; flex-direction: column; align-items: flex-start; gap: 16px; }
+  .footer-links { flex-wrap: wrap; gap: 16px; }
+
+  .azure-banner { padding: 24px 20px; }
+  .azure-services { flex-direction: column; gap: 16px; }
+  .azure-service { padding: 0; min-width: unset; }
+  .azure-divider { display: none; }
+
+  .terminal-body { font-size: 11px; padding: 16px; }
+  .terminal { font-size: 11px; }
+}
+
+@media (max-width: 540px) {
+  .agents-grid { grid-template-columns: 1fr; }
+  .stats-bar { grid-template-columns: 1fr 1fr; }
+  .hero-title { font-size: clamp(36px, 12vw, 56px); }
+  .section-title { font-size: clamp(28px, 8vw, 40px); }
+  .flow-step { gap: 16px; }
+  .tech-row { gap: 8px; }
+  .tech-tag { font-size: 10px; padding: 5px 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">MK<span>.</span>Freight</div>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#agents">Agents</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#contact" class="nav-cta">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-badge reveal">
+    <div class="hero-badge-dot"></div>
+    <span>Production Ready · V4.0 · 17 AI Agents</span>
+  </div>
+
+  <h1 class="hero-title reveal">
+    Freight Dispatch<br>
+    <span class="line-orange">Fully</span><br>
+    <span class="line-outline">Automated.</span>
+  </h1>
+
+  <p class="hero-desc reveal">
+    MK Freight AI is an autonomous multi-agent system that handles the entire US freight dispatch cycle — from carrier recruitment to payment collection — with zero manual intervention.
+  </p>
+
+  <div class="hero-actions reveal">
+    <a href="mailto:Dispatch@mkfreightsolutions.me?subject=Demo Request — MK Freight AI&body=Hello,%0A%0AI'm interested in a demo of MK Freight AI.%0A%0ACompany:%0AName:%0APhone:" class="btn-primary">Request Demo</a>
+    <a href="#how" class="btn-ghost">See how it works</a>
+  </div>
+
+  <div class="stats-bar reveal">
+    <div class="stat-item">
+      <div class="stat-number">17</div>
+      <div class="stat-label">Specialized AI Agents</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">80%</div>
+      <div class="stat-label">Reduction in Manual Work</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">3</div>
+      <div class="stat-label">Telegram Bots Integrated</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">24/7</div>
+      <div class="stat-label">Autonomous Operation</div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM / SOLUTION -->
+<section>
+  <div class="section-label reveal">The Problem</div>
+  <h2 class="section-title reveal">Freight dispatch is<br>broken by design.</h2>
+  <div class="ps-grid reveal">
+    <div class="ps-card">
+      <div class="ps-label problem">Before MK Freight AI</div>
+      <ul class="ps-list problem-list">
+        <li>Dispatchers manually call 10-20 carriers per load</li>
+        <li>Hours wasted on failed negotiations and no-shows</li>
+        <li>Market rate intelligence is slow and inaccurate</li>
+        <li>Document collection is a manual bottleneck</li>
+        <li>Payment follow-ups require constant human effort</li>
+        <li>No real-time tracking or crisis management system</li>
+      </ul>
+    </div>
+    <div class="ps-card solution">
+      <div class="ps-label solution">With MK Freight AI</div>
+      <ul class="ps-list solution-list">
+        <li>AI agents recruit and screen carriers 24/7 automatically</li>
+        <li>Intelligent negotiation with carriers and brokers in parallel</li>
+        <li>Real-time market intelligence via Bot 3 + DAT/Truckstop</li>
+        <li>Automated document collection and verification</li>
+        <li>Autonomous payment collection with escalation protocols</li>
+        <li>9-dimensional risk analysis per load + crisis management</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-label reveal">How It Works</div>
+  <h2 class="section-title reveal">End-to-end dispatch<br>intelligence.</h2>
+  <p class="section-sub reveal">Every load moves through an orchestrated pipeline of specialized agents — each with a defined role, escalation rules, and decision authority.</p>
+
+  <div class="flow-container">
+    <div class="flow-steps">
+      <div class="flow-step reveal">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <h4>Load Intake & Analysis</h4>
+          <p>Agent 4 (THE MASTERMIND) analyzes each load: profitability, risk score, lane intelligence, and optimal carrier profile — all within 2-3 minutes.</p>
+        </div>
+      </div>
+      <div class="flow-step reveal">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <h4>Carrier Recruitment & Matching</h4>
+          <p>Agent 1 mines new carriers from FMCSA. Agent 2 (Sarah) recruits via phone calls. Agent 5 negotiates rates with live carriers on the line.</p>
+        </div>
+      </div>
+      <div class="flow-step reveal">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <h4>Broker Negotiation</h4>
+          <p>Agent 7 handles all broker communications with intelligent counter-offers, rate anchoring, and fallback strategies built in.</p>
+        </div>
+      </div>
+      <div class="flow-step reveal">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <h4>Execution & Tracking</h4>
+          <p>Agent 9 handles all documents. Agent 10 tracks shipments in real-time. Agent 12 (JOHN) makes enforcement calls when carriers deviate.</p>
+        </div>
+      </div>
+      <div class="flow-step reveal">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <h4>Payment Collection</h4>
+          <p>Agent 11 sends invoices and tracks payments. Agent 13 verifies every payment. Automated escalation if payments are delayed beyond threshold.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="terminal reveal">
+      <div class="terminal-header">
+        <div class="t-dot"></div>
+        <div class="t-dot"></div>
+        <div class="t-dot"></div>
+        <span class="terminal-title">mk-freight-agent-v4 — live</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-text">agent_0.maestro.run()</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-green">✓ MAESTRO online — monitoring 9 active loads</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-comment">— — — — — — — — — — — — —</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-yellow">⚡ URGENT: Load #4821 — carrier needed</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-blue">→ Agent 4: analyzing load profitability...</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-green">✓ Risk score: 2.1/9 · Profit target: $420</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-blue">→ Agent 5: calling carrier MC-882341...</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-green">✓ Carrier confirmed @ $1,850 · ETA: 2h</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-blue">→ Agent 7: negotiating with broker...</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-green">✓ Rate locked: $2,270 · Net: $420 ✓</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-blue">→ Agent 9: sending carrier packet...</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-green">✓ BOL + COI verified · Load confirmed</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-comment">— — — — — — — — — — — — —</span></div>
+        <div class="t-line"><span class="t-prompt"></span><span class="t-text">Time elapsed: 4m 12s <span class="t-cursor"></span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGENTS -->
+<section id="agents" class="agents-section">
+  <div class="section-label reveal">The System</div>
+  <h2 class="section-title reveal">17 specialized agents.<br>One unified intelligence.</h2>
+  <p class="section-sub reveal">Every agent has a defined role, escalation protocol, and decision boundary — orchestrated by MAESTRO in real-time.</p>
+
+  <div class="agents-grid reveal">
+    <div class="agent-card">
+      <div class="agent-id">AGENT-0</div>
+      <div class="agent-name">MAESTRO</div>
+      <div class="agent-role">Master coordinator. Manages all agent priorities, resolves conflicts, and escalates to human when needed.</div>
+      <div class="agent-star">⭐</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-4</div>
+      <div class="agent-name">THE MASTERMIND</div>
+      <div class="agent-role">Core decision engine. 9-dimensional risk analysis, profitability scoring, and load strategy per shipment.</div>
+      <div class="agent-star">⭐</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-1</div>
+      <div class="agent-name">THE MINER</div>
+      <div class="agent-role">Continuously mines new carriers from FMCSA database, filters by safety score, authority, and lane history.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-2</div>
+      <div class="agent-name">THE RECRUITER</div>
+      <div class="agent-role">Sarah — AI voice agent that calls carriers, delivers the pitch, and onboards qualified candidates autonomously.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-5</div>
+      <div class="agent-name">CARRIER NEGOTIATOR</div>
+      <div class="agent-role">Handles live carrier negotiations, rate anchoring, pre-check protocols, and fallback strategies.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-7</div>
+      <div class="agent-name">BROKER NEGOTIATOR</div>
+      <div class="agent-role">Manages all broker communications with intelligent counter-offers and dynamic rate strategies.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-8</div>
+      <div class="agent-name">DEAL ANALYZER</div>
+      <div class="agent-role">Analyzes every deal in real-time: margin, risk exposure, carrier reliability score, and go/no-go decision.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-9</div>
+      <div class="agent-name">THE ADMIN</div>
+      <div class="agent-role">Automated document management: BOL, COI, carrier packets — collected, verified, and distributed.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-10</div>
+      <div class="agent-name">THE TRACKER</div>
+      <div class="agent-role">Real-time shipment tracking with proactive alerts, ETA updates, and deviation detection.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-11</div>
+      <div class="agent-name">THE COLLECTOR</div>
+      <div class="agent-role">Invoice generation, payment tracking, and automated follow-up sequences with escalation triggers.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-12</div>
+      <div class="agent-name">JOHN — THE ENFORCER</div>
+      <div class="agent-role">AI voice agent for enforcement calls — handles carrier deviations, delays, and compliance issues.</div>
+    </div>
+    <div class="agent-card">
+      <div class="agent-id">AGENT-X</div>
+      <div class="agent-name">DESTINATION CLASSIFIER</div>
+      <div class="agent-role">Classifies destinations by difficulty, risk, and operational requirements using proprietary scoring.</div>
+      <div class="agent-star">⭐</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label reveal">Capabilities</div>
+  <h2 class="section-title reveal">Built for the real<br>complexity of freight.</h2>
+
+  <div class="features-grid reveal">
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">Real-Time Market Intelligence</div>
+      <div class="feature-desc">Bot 3 continuously monitors DAT, Truckstop, and lane-specific rates. Agent Y delivers destination intelligence before every load decision.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">4-Level Priority System</div>
+      <div class="feature-desc">MAESTRO classifies every task into Critical (0-5 min), Urgent (15-30 min), Important (1-3h), or Normal — and dispatches automatically.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">Telegram-Native Operations</div>
+      <div class="feature-desc">Three dedicated Telegram bots handle operations, payments, and market data — giving full visibility and control from any device.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">9-Dimensional Risk Analysis</div>
+      <div class="feature-desc">Every load is scored across 9 risk dimensions before commitment. Conflict detection and auto-resolution built into every agent.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">9-Table Database Architecture</div>
+      <div class="feature-desc">Comprehensive data layer tracking carriers, loads, brokers, negotiations, payments, documents, and performance metrics in real-time.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎙️</div>
+      <div class="feature-title">AI Voice Agents</div>
+      <div class="feature-desc">Agent 2 (Sarah) recruits carriers by phone. Agent 12 (JOHN) handles enforcement calls. Both operate autonomously with full conversation scripts.</div>
+    </div>
+  </div>
+
+  <!-- Azure Banner -->
+  <div class="azure-banner reveal">
+    <div class="azure-inner">
+      <div class="azure-logo">
+        <svg width="22" height="22" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M33.338 6.544H53.88L31.615 73.41a4.23 4.23 0 01-4.016 2.903H8.26a4.23 4.23 0 01-4.013-5.559L25.324 9.447a4.23 4.23 0 014.014-2.903z" fill="url(#az1)"/>
+          <path d="M65.03 58.516H29.455a1.944 1.944 0 00-1.325 3.364l22.72 21.237a4.25 4.25 0 002.894 1.14H71.67l-6.64-25.74z" fill="#0078d4"/>
+          <path d="M33.338 6.544a4.19 4.19 0 00-4.007 2.878L4.27 70.727a4.23 4.23 0 004.006 5.585h19.556a4.545 4.545 0 003.484-2.94l4.716-13.894 16.872 15.757a4.32 4.32 0 002.796 1.022H71.67l-6.68-19.737-19.44.004L61.264 6.544z" fill="url(#az2)"/>
+          <path d="M70.676 9.447A4.23 4.23 0 0066.662 6.54H33.626a4.23 4.23 0 014.014 2.907l21.077 61.307a4.23 4.23 0 01-4.013 5.559h33.036a4.23 4.23 0 004.013-5.559z" fill="url(#az3)"/>
+          <defs>
+            <linearGradient id="az1" x1="44.91" y1="10.725" x2="17.586" y2="75.445" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#114a8b"/><stop offset="1" stop-color="#0669bc"/>
+            </linearGradient>
+            <linearGradient id="az2" x1="42.14" y1="43.207" x2="36.144" y2="45.175" gradientUnits="userSpaceOnUse">
+              <stop stop-opacity=".3"/><stop offset=".071" stop-opacity=".2"/><stop offset=".321" stop-opacity=".1"/><stop offset=".623" stop-opacity=".05"/><stop offset="1" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="az3" x1="55.77" y1="9.01" x2="86.44" y2="75.006" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#3ccbf4"/><stop offset="1" stop-color="#2892df"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="azure-title">Powered by Microsoft Azure</span>
+      </div>
+      <div class="azure-services">
+        <div class="azure-service">
+          <div class="azure-service-icon">🤖</div>
+          <div>
+            <div class="azure-service-name">Azure OpenAI Service</div>
+            <div class="azure-service-desc">GPT-4 & Claude for agent intelligence</div>
+          </div>
+        </div>
+        <div class="azure-divider"></div>
+        <div class="azure-service">
+          <div class="azure-service-icon">☁️</div>
+          <div>
+            <div class="azure-service-name">Azure Cloud Infrastructure</div>
+            <div class="azure-service-desc">Scalable compute & managed services</div>
+          </div>
+        </div>
+        <div class="azure-divider"></div>
+        <div class="azure-service">
+          <div class="azure-service-icon">🗄️</div>
+          <div>
+            <div class="azure-service-name">Azure Cosmos DB</div>
+            <div class="azure-service-desc">Real-time distributed data layer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tech-row reveal">
+    <span class="tech-tag azure-tag">
+      <svg width="13" height="13" viewBox="0 0 96 96" fill="none" style="vertical-align:middle;margin-right:5px"><path d="M33.338 6.544H53.88L31.615 73.41a4.23 4.23 0 01-4.016 2.903H8.26a4.23 4.23 0 01-4.013-5.559L25.324 9.447a4.23 4.23 0 014.014-2.903z" fill="#0078d4"/><path d="M70.676 9.447A4.23 4.23 0 0066.662 6.54H33.626a4.23 4.23 0 014.014 2.907l21.077 61.307a4.23 4.23 0 01-4.013 5.559h33.036a4.23 4.23 0 004.013-5.559z" fill="#2892df"/></svg>
+      Azure OpenAI
+    </span>
+    <span class="tech-tag azure-tag">
+      <svg width="13" height="13" viewBox="0 0 96 96" fill="none" style="vertical-align:middle;margin-right:5px"><path d="M33.338 6.544H53.88L31.615 73.41a4.23 4.23 0 01-4.016 2.903H8.26a4.23 4.23 0 01-4.013-5.559L25.324 9.447a4.23 4.23 0 014.014-2.903z" fill="#0078d4"/><path d="M70.676 9.447A4.23 4.23 0 0066.662 6.54H33.626a4.23 4.23 0 014.014 2.907l21.077 61.307a4.23 4.23 0 01-4.013 5.559h33.036a4.23 4.23 0 004.013-5.559z" fill="#2892df"/></svg>
+      Azure Cloud
+    </span>
+    <span class="tech-tag azure-tag">
+      <svg width="13" height="13" viewBox="0 0 96 96" fill="none" style="vertical-align:middle;margin-right:5px"><path d="M33.338 6.544H53.88L31.615 73.41a4.23 4.23 0 01-4.016 2.903H8.26a4.23 4.23 0 01-4.013-5.559L25.324 9.447a4.23 4.23 0 014.014-2.903z" fill="#0078d4"/><path d="M70.676 9.447A4.23 4.23 0 0066.662 6.54H33.626a4.23 4.23 0 014.014 2.907l21.077 61.307a4.23 4.23 0 01-4.013 5.559h33.036a4.23 4.23 0 004.013-5.559z" fill="#2892df"/></svg>
+      Azure Cosmos DB
+    </span>
+    <span class="tech-tag">Python</span>
+    <span class="tech-tag">Claude API</span>
+    <span class="tech-tag">Telegram Bot API</span>
+    <span class="tech-tag">FMCSA API</span>
+    <span class="tech-tag">DAT Integration</span>
+    <span class="tech-tag">PostgreSQL</span>
+    <span class="tech-tag">Redis</span>
+    <span class="tech-tag">Multi-Agent Architecture</span>
+    <span class="tech-tag">Voice AI</span>
+    <span class="tech-tag">Real-Time Orchestration</span>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="contact" class="cta-section">
+  <div class="section-label">Get In Touch</div>
+  <h2 class="section-title">Ready to automate<br>your dispatch?</h2>
+  <p class="section-sub">MK Freight AI is built for freight brokerages that want to scale without scaling headcount. Let's talk.</p>
+  <div class="cta-btns">
+    <a href="mailto:Dispatch@mkfreightsolutions.me?subject=Demo Request — MK Freight AI&body=Hello,%0A%0AI am interested in a demo of MK Freight AI.%0A%0ACompany:%0AName:%0APhone:" class="btn-dark">Dispatch@mkfreightsolutions.me</a>
+    <a href="#how" class="btn-outline-dark">See the system</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">MK<span>.</span>Freight</div>
+  <ul class="footer-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#agents">Agents</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 MK Freight Solutions. All rights reserved.</div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// Custom cursor
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx - 5 + 'px';
+  cursor.style.top = my - 5 + 'px';
+});
+
+function animateRing() {
+  rx += (mx - rx - 18) * 0.12;
+  ry += (my - ry - 18) * 0.12;
+  ring.style.left = rx + 'px';
+  ring.style.top = ry + 'px';
+  requestAnimationFrame(animateRing);
+}
+animateRing();
+
+document.querySelectorAll('a, button').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.transform = 'scale(2)';
+    ring.style.transform = 'scale(1.5)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.transform = 'scale(1)';
+    ring.style.transform = 'scale(1)';
+  });
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries
